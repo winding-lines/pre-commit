@@ -8,6 +8,7 @@ var fs = require('fs')
   , os = require('os')
   , hook = path.join(__dirname, 'hook')
   , root = path.resolve(__dirname, '..', '..')
+  , projectRoot = root
   , exists = fs.existsSync || path.existsSync;
 
 //
@@ -16,15 +17,21 @@ var fs = require('fs')
 // `pre-commit` file. The path needs to be absolute in order for the symlinking
 // to work correctly.
 //
-var git = path.resolve(root, '.git')
-  , hooks = path.resolve(git, 'hooks')
+var git = path.resolve(root, '.git');
+if (!exists(git) || !fs.lstatSync(git).isDirectory()) {
+  root = path.resolve(root, '..');
+  git = path.resolve(root, '.git');
+  console.log('second chance', git);
+  if (!exists(git) || !fs.lstatSync(git).isDirectory()) return;
+}
+
+
+var hooks = path.resolve(git, 'hooks')
   , precommit = path.resolve(hooks, 'pre-commit');
 
+
+// If we do have directory create a hooks folder if it doesn't exist.
 //
-// Bail out if we don't have an `.git` directory as the hooks will not get
-// triggered. If we do have directory create a hooks folder if it doesn't exist.
-//
-if (!exists(git) || !fs.lstatSync(git).isDirectory()) return;
 if (!exists(hooks)) fs.mkdirSync(hooks);
 
 //
@@ -50,14 +57,15 @@ catch (e) {}
 // Create generic precommit hook that launches this modules hook (as well
 // as stashing - unstashing the unstaged changes)
 // TODO: we could keep launching the old pre-commit scripts
-var hookRelativeUnixPath = hook.replace(root, '.');
+var hookRelativeUnixPath = path.relative(projectRoot, hook);
 
 if(os.platform() === 'win32') {
   hookRelativeUnixPath = hookRelativeUnixPath.replace(/[\\\/]+/g, '/');
 }
 
 var precommitContent = '#!/bin/bash' + os.EOL
-  +  hookRelativeUnixPath + os.EOL
+  +  'cd ' + projectRoot + os.EOL
+  +  '[ -f "' + hookRelativeUnixPath + '" ] && ' + hookRelativeUnixPath + os.EOL
   + 'RESULT=$?' + os.EOL
   + '[ $RESULT -ne 0 ] && exit 1' + os.EOL
   + 'exit 0' + os.EOL;

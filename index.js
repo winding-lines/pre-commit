@@ -24,6 +24,7 @@ function Hook(fn, options) {
   this.npm = '';              // The location of the `npm` binary.
   this.git = '';              // The location of the `git` binary.
   this.root = '';             // The root location of the .git folder.
+  this.packageRoot = path.resolve(__dirname, '..', '..');
   this.status = '';           // Contents of the `git status`.
   this.exit = fn;             // Exit function.
 
@@ -180,7 +181,7 @@ Hook.prototype.initialize = function initialize() {
   this.root = this.root.stdout.toString().trim();
 
   try {
-    this.json = require(path.join(this.root, 'package.json'));
+    this.json = require(path.join(this.packageRoot, 'package.json'));
     this.parse();
   } catch (e) { return this.log(this.format(Hook.log.json, e.message), 0); }
 
